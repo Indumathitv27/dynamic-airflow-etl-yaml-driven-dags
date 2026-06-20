@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from include.transform import parse_hourly, evaluate_dq
 
 import requests
 import yaml
@@ -89,23 +90,17 @@ def transform_to_staging(pipeline_name: str, **context):
                 raise ValueError("No raw payload found for this run.")
 
             payload = row[0]
-            hourly = payload.get("hourly", {})
-            times = hourly.get("time", [])
-            temps = hourly.get("temperature_2m", [])
-            winds = hourly.get("windspeed_10m", [])
+            rows = parse_hourly(payload, pipeline_name, fetched_at)
 
-            n = min(len(times), len(temps), len(winds))
-            inserted = 0
-
-            for i in range(n):
+            for r in rows:
                 cur.execute(
                     """
                     INSERT INTO stg_weather_hourly (pipeline_name, ts, temperature, windspeed, fetched_at)
                     VALUES (%s, %s, %s, %s, %s)
                     """,
-                    (pipeline_name, times[i], temps[i], winds[i], fetched_at),
+                    r,
                 )
-                inserted += 1
+            inserted = len(rows)
         conn.commit()
     finally:
         conn.close()
@@ -142,7 +137,7 @@ def dq_checks(pipeline_name: str, **context):
     finally:
         conn.close()
 
-    passed = (row_count > 0) and (null_temps < row_count)
+    passed = evaluate_dq(row_count, null_temps)
     if not passed:
         raise ValueError(f"DQ failed: row_count={row_count}, null_temps={null_temps}")
 
