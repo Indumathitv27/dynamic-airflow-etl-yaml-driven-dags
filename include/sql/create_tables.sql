@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS stg_weather_hourly (
   ts TIMESTAMP,
   temperature DOUBLE PRECISION,
   windspeed DOUBLE PRECISION,
-  fetched_at TIMESTAMP
+  fetched_at TIMESTAMP,
+  CONSTRAINT uq_stg_weather UNIQUE (pipeline_name, ts, fetched_at)
 );
 
 CREATE TABLE IF NOT EXISTS pipeline_run_metrics (

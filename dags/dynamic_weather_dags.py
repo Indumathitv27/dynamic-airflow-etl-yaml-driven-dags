@@ -97,6 +97,10 @@ def transform_to_staging(pipeline_name: str, **context):
                     """
                     INSERT INTO stg_weather_hourly (pipeline_name, ts, temperature, windspeed, fetched_at)
                     VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (pipeline_name, ts, fetched_at)
+                    DO UPDATE SET
+                        temperature = EXCLUDED.temperature,
+                        windspeed = EXCLUDED.windspeed
                     """,
                     r,
                 )
